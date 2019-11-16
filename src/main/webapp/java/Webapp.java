@@ -1,9 +1,9 @@
-package java;
+package main. webapp.java;
 
 import javax.ws.rs.ApplicationPath;
 import javax.ws.rs.core.Application;
 
-@ApplicationPath(value = "web")
+@ApplicationPath("web")
 public class Webapp extends Application {
 
 }
