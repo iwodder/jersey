@@ -25,4 +25,11 @@ public class TestResource {
     public String getDate(@QueryParam("type") MyDate date) {
         return date.toString();
     }
+
+    @GET
+    @Path("/secure-date")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String getSecureDate(@QueryParam("type") MyDate date) {
+        return date.toString();
+    }
 }
