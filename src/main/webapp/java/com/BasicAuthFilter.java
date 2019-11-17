@@ -1,33 +1,55 @@
 package main.webapp.java.com;
 
+import org.reflections.Reflections;
+
+import javax.annotation.Resource;
+import javax.ws.rs.Path;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
-import java.util.Base64;
-import java.util.HashMap;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.*;
 
 @Provider
 public class BasicAuthFilter implements ContainerRequestFilter {
     private HashMap<String, String> userPass;
-    private static final String SECURED = "/secure-date";
-    public BasicAuthFilter() {
-        userPass = new HashMap<>();
+    private List<String> securedResources;
+
+    public BasicAuthFilter() throws IOException {
         populateUserPass();
+        getSecuredResources();
     }
 
     private void populateUserPass() {
+        userPass = new HashMap<>();
         userPass.put("UserName", "passw0rd");
         userPass.put("tomcat", "s3cret");
+    }
+
+    private void getSecuredResources() throws IOException {
+        securedResources = new ArrayList<>();
+        Reflections reflections = new Reflections("main.webapp.java.com");
+        Set<Class<?>> securedClasses = reflections.getTypesAnnotatedWith(Resource.class);
+        System.out.println("===========> Secured classes were:" + securedClasses);
+        for (Class cls : securedClasses) {
+            for (Method m : cls.getMethods()) {
+                Secured sCls = m.getAnnotation(Secured.class);
+                if (sCls != null) {
+                    Path p = m.getAnnotation(Path.class);
+                    securedResources.add(p.value());
+                }
+            }
+        }
     }
 
 
     @Override
     public void filter(ContainerRequestContext containerRequestContext) {
-        if (containerRequestContext.getUriInfo().getPath().contains(SECURED)) {
+        if (isSecuredResource(containerRequestContext.getUriInfo().getPath())) {
             String auth = containerRequestContext.getHeaderString("Authorization");
             auth = auth.trim();
             int ind = auth.indexOf(" ") + 1;
@@ -55,6 +77,19 @@ public class BasicAuthFilter implements ContainerRequestFilter {
                         .build();
                 containerRequestContext.abortWith(r);
             }
+        }
+    }
+
+    private boolean isSecuredResource(String url) {
+        if (securedResources == null || securedResources.size() == 0 ) {
+            return true;
+        } else {
+            for (String res : securedResources) {
+                if (url.contains(res)) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }
